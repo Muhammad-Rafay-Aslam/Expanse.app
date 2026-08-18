@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0F1417">
+<meta name="description" content="Offline personal expense ledger">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<title>ExpenseIQ — Smart Expense Tracker</title>
+<style>
+  :root{
+    --bg:#0F1417;
+    --surface:#171F23;
+    --surface-2:#1F292E;
+    --surface-3:#26323838;
+    --line:#2B363B;
+    --text:#EDEFF0;
+    --text-dim:#8B979B;
+    --text-faint:#5B686D;
+    --gold:#E3B23C;
+    --gold-dim:#8A6C28;
+    --teal:#3FA796;
+    --wine:#B8433C;
+    --wine-dim:#7A342F;
+    --radius:10px;
+    --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    --font-mono: 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    --font-body: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  body{
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #1a2328 0%, transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding:20px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{ max-width:920px; margin:0 auto; }
+
+  /* ── Header / Ledger head ───────────────────────── */
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:16px;
+    margin-bottom:22px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{ display:flex; flex-direction:column; gap:2px; }
+  .brand .mark{
+    font-family:var(--font-display);
+    font-size:28px;
+    letter-spacing:0.5px;
+    color:var(--text);
+  }
+  .brand .mark em{ color:var(--gold); font-style:normal; }
+  .brand .sub{
+    font-size:12px;
+    color:var(--text-faint);
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+  }
+  .header-greeting{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:13px;
+    color:var(--text-dim);
+    width:100%;
+    justify-content:flex-end;
+    margin-bottom:8px;
+  }
+  .header-greeting #greetName{ color:var(--gold); font-weight:600; }
+  .header-greeting button{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:50%;
+    width:28px; height:28px;
+    cursor:pointer;
+    font-size:13px;
+  }
+  .header-greeting button:hover{ border-color:var(--gold-dim); }
+
+  .header-controls{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  #currencySelect{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:999px;
+    color:var(--text-dim);
+    font-family:var(--font-mono);
+    font-size:13px;
+    padding:8px 12px;
+    cursor:pointer;
+  }
+  .month-nav{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:6px 6px 6px 14px;
+  }
+  .month-nav span{
+    font-family:var(--font-mono);
+    font-size:14px;
+    min-width:118px;
+    text-align:center;
+    color:var(--text);
+  }
+  .month-nav button{
+    width:30px; height:30px;
+    border-radius:50%;
+    border:none;
+    background:var(--surface-2);
+    color:var(--text-dim);
+    font-size:15px;
+    cursor:pointer;
+    transition:background .15s, color .15s;
+  }
+  .month-nav button:hover{ background:var(--gold-dim); color:#fff; }
+  .month-nav button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+
+  .view-tabs{
+    display:flex;
+    gap:6px;
+    margin-bottom:18px;
+  }
+  .view-tabs .tab{
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    font-size:13px;
+    padding:8px 16px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .view-tabs .tab:hover{ color:var(--text); }
+  .view-tabs .tab.active{
+    background:var(--gold);
+    color:#241B04;
+    border-color:var(--gold);
+    font-weight:700;
+  }
+  .view-tabs .tab:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+
+  /* ── Total display — the signature "odometer" card ── */
+  .total-card{
+    background:linear-gradient(160deg, var(--surface-2), var(--surface));
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:26px 28px;
+    margin-bottom:20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+    flex-wrap:wrap;
+    position:relative;
+    overflow:hidden;
+  }
+  .total-card::before{
+    content:"";
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(90deg, transparent 0 34px, rgba(255,255,255,.015) 34px 35px);
+    pointer-events:none;
+  }
+  .total-label{
+    font-size:12px;
+    letter-spacing:1.8px;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    margin-bottom:8px;
+  }
+  .total-amount{
+    font-family:var(--font-mono);
+    font-size:44px;
+    font-weight:600;
+    color:var(--gold);
+    letter-spacing:1px;
+    display:flex;
+    gap:2px;
+  }
+  .total-amount .digit{
+    display:inline-block;
+    transition:transform .35s ease;
+  }
+  .total-amount .rs{ font-size:24px; color:var(--text-dim); margin-right:6px; align-self:flex-start; }
+  .total-meta{
+    text-align:right;
+    font-size:13px;
+    color:var(--text-dim);
+    font-family:var(--font-mono);
+  }
+  .total-meta .count{ color:var(--teal); }
+
+  /* ── Insight banner (ExpenseIQ) ─────────────────── */
+  .insight-banner{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    background:linear-gradient(135deg, rgba(63,167,150,.10), rgba(227,178,60,.06));
+    border:1px solid var(--line);
+    border-left:3px solid var(--teal);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:20px;
+    font-size:13px;
+    line-height:1.5;
+  }
+  .insight-banner.warn{ border-left-color:var(--wine); }
+  .insight-banner .ico{ font-size:18px; flex-shrink:0; margin-top:1px; }
+  .insight-banner .txt{ color:var(--text); }
+  .insight-banner .txt b{ color:var(--gold); }
+  .insight-banner .txt .down{ color:var(--teal); }
+  .insight-banner .txt .up{ color:var(--wine); }
+  .insight-banner .sub{ color:var(--text-faint); font-size:12px; margin-top:3px; display:block; }
+
+  /* ── Add expense form ───────────────────────────── */
+  .add-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:20px;
+  }
+  .add-card h2{
+    font-family:var(--font-display);
+    font-size:16px;
+    color:var(--text-dim);
+    font-weight:normal;
+    margin-bottom:14px;
+    letter-spacing:.3px;
+  }
+  #expenseForm{
+    display:grid;
+    grid-template-columns:1fr 1fr 1.4fr auto auto;
+    gap:10px;
+  }
+  @media (max-width:720px){
+    #expenseForm{ grid-template-columns:1fr 1fr; }
+    #expenseForm .full{ grid-column:1 / -1; }
+  }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{
+    font-size:11px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--text-faint);
+  }
+  input, select{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    color:var(--text);
+    padding:10px 12px;
+    font-size:14px;
+    font-family:var(--font-body);
+    width:100%;
+  }
+  input[type="number"]{ font-family:var(--font-mono); }
+  input:focus, select:focus{
+    outline:2px solid var(--gold);
+    outline-offset:1px;
+    border-color:var(--gold);
+  }
+  select{ appearance:none; cursor:pointer; }
+  .add-btn{
+    align-self:end;
+    background:var(--gold);
+    color:#241B04;
+    border:none;
+    border-radius:8px;
+    padding:10px 20px;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    transition:transform .12s, background .15s;
+    white-space:nowrap;
+  }
+  .add-btn:hover{ background:#f0c25a; }
+  .add-btn:active{ transform:scale(.97); }
+  .add-btn:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+
+  /* ── Category breakdown ─────────────────────────── */
+  .breakdown{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:20px;
+  }
+  .breakdown h2{
+    font-family:var(--font-display);
+    font-size:16px; font-weight:normal;
+    color:var(--text-dim);
+    margin-bottom:14px;
+  }
+  .cat-row{
+    display:grid;
+    grid-template-columns:120px 1fr 90px;
+    align-items:center;
+    gap:12px;
+    margin-bottom:10px;
+    font-size:13px;
+  }
+  .cat-row .cat-name{ color:var(--text); }
+  .cat-row .bar-track{
+    background:var(--surface-2);
+    height:8px;
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .cat-row .bar-fill{
+    height:100%;
+    border-radius:6px;
+    background:linear-gradient(90deg, var(--teal), var(--gold));
+    width:0%;
+    transition:width .5s ease;
+  }
+  .cat-row .cat-amt{
+    font-family:var(--font-mono);
+    text-align:right;
+    color:var(--text-dim);
+  }
+  .empty-note{ color:var(--text-faint); font-size:13px; text-align:center; padding:10px; }
+
+  /* ── Ledger / entries list ──────────────────────── */
+  .ledger h2{
+    font-family:var(--font-display);
+    font-size:16px; font-weight:normal;
+    color:var(--text-dim);
+    margin-bottom:12px;
+  }
+  .day-group{ margin-bottom:14px; }
+  .day-heading{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-faint);
+    letter-spacing:1px;
+    margin:0 0 6px 2px;
+    text-transform:uppercase;
+  }
+  .entry{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 14px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:8px;
+  }
+  .entry .icon{
+    width:36px; height:36px;
+    border-radius:50%;
+    background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px;
+    flex-shrink:0;
+  }
+  .entry .info{ flex:1; min-width:0; }
+  .entry .cat{ font-size:13px; color:var(--text); font-weight:600; }
+  .entry .note{ font-size:12px; color:var(--text-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .entry .amt{
+    font-family:var(--font-mono);
+    font-size:15px;
+    color:var(--wine);
+    white-space:nowrap;
+  }
+  .entry .del{
+    background:none; border:none;
+    color:var(--text-faint);
+    cursor:pointer;
+    font-size:16px;
+    padding:4px 6px;
+    border-radius:6px;
+    transition:color .15s, background .15s;
+  }
+  .entry .del:hover{ color:var(--wine); background:var(--surface-2); }
+  .entry .del:focus-visible{ outline:2px solid var(--gold); }
+
+  .empty-state{
+    text-align:center;
+    padding:50px 20px;
+    color:var(--text-faint);
+  }
+  .empty-state .glyph{ font-size:30px; margin-bottom:10px; opacity:.6; }
+  .empty-state p{ font-size:13px; }
+
+  footer{
+    margin-top:26px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+    font-size:12px;
+    color:var(--text-faint);
+  }
+  footer .actions{ display:flex; gap:8px; }
+  footer button{
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    padding:7px 12px;
+    border-radius:7px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  footer button:hover{ color:var(--text); border-color:var(--gold-dim); }
+  #importFile{ display:none; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+
+  ::selection{ background:var(--gold); color:#241B04; }
+
+  /* ── Auth overlay (onboarding + lock screen) ────── */
+  #authOverlay{
+    position:fixed; inset:0;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #1a2328 0%, transparent 60%),
+      var(--bg);
+    z-index:1000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  #authOverlay.hidden{ display:none; }
+  .auth-card{
+    width:100%;
+    max-width:360px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:32px 28px;
+    text-align:center;
+  }
+  .auth-mark{
+    font-family:var(--font-display);
+    font-size:26px;
+    margin-bottom:4px;
+  }
+  .auth-mark em{ color:var(--gold); font-style:normal; }
+  .auth-sub{
+    font-size:12px;
+    color:var(--text-faint);
+    letter-spacing:1px;
+    text-transform:uppercase;
+    margin-bottom:24px;
+  }
+  .auth-greeting{
+    font-size:18px;
+    color:var(--text);
+    margin-bottom:22px;
+  }
+  .auth-greeting b{ color:var(--gold); }
+  .auth-field{ text-align:left; margin-bottom:16px; }
+  .auth-field label{
+    display:block;
+    font-size:11px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--text-faint);
+    margin-bottom:6px;
+  }
+  .auth-field input{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    color:var(--text);
+    padding:12px 14px;
+    font-size:15px;
+    width:100%;
+    font-family:var(--font-body);
+  }
+  .auth-field input:focus{ outline:2px solid var(--gold); outline-offset:1px; border-color:var(--gold); }
+  .pin-input{
+    font-family:var(--font-mono);
+    letter-spacing:10px;
+    text-align:center;
+    font-size:22px !important;
+  }
+  .auth-btn{
+    width:100%;
+    background:var(--gold);
+    color:#241B04;
+    border:none;
+    border-radius:8px;
+    padding:13px;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    margin-top:6px;
+  }
+  .auth-btn:hover{ background:#f0c25a; }
+  .auth-btn.secondary{
+    background:var(--surface-2);
+    color:var(--text-dim);
+    border:1px solid var(--line);
+    margin-top:10px;
+  }
+  .auth-btn.secondary:hover{ color:var(--text); }
+  .auth-btn.ghost{
+    background:none;
+    border:none;
+    color:var(--text-faint);
+    font-size:12px;
+    text-decoration:underline;
+    margin-top:16px;
+    cursor:pointer;
+    padding:6px;
+  }
+  .auth-error{
+    color:var(--wine);
+    font-size:12px;
+    min-height:16px;
+    margin-top:2px;
+  }
+  .biometric-icon{ font-size:28px; margin-bottom:10px; }
+  .auth-divider{
+    display:flex; align-items:center; gap:10px;
+    color:var(--text-faint); font-size:11px;
+    margin:18px 0;
+  }
+  .auth-divider::before, .auth-divider::after{
+    content:""; flex:1; height:1px; background:var(--line);
+  }
+  #appRoot.locked{ display:none; }
+
+  /* ── Toast notification ─────────────────────────── */
+  #toast{
+    position:fixed;
+    top:20px;
+    left:50%;
+    transform:translateX(-50%) translateY(-20px);
+    background:var(--surface-2);
+    border:1px solid var(--teal);
+    color:var(--text);
+    padding:12px 20px;
+    border-radius:10px;
+    font-size:13px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    z-index:2000;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .3s ease, transform .3s ease;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  #toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+  #toast .tick{
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--teal);
+    color:#0F1417;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px;
+    flex-shrink:0;
+  }
+
+  /* ── Danger confirm modal (forgot PIN / reset) ──── */
+  .danger-modal{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.6);
+    z-index:2100;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .danger-modal.hidden{ display:none; }
+  .danger-card{
+    background:var(--surface);
+    border:1px solid var(--wine-dim);
+    border-radius:14px;
+    padding:26px 24px;
+    max-width:360px;
+    width:100%;
+    text-align:center;
+  }
+  .danger-card .warn-ico{ font-size:30px; margin-bottom:10px; }
+  .danger-card h3{
+    font-family:var(--font-display);
+    font-weight:normal;
+    font-size:18px;
+    color:var(--text);
+    margin-bottom:10px;
+  }
+  .danger-card p{
+    font-size:13px;
+    color:var(--text-dim);
+    line-height:1.6;
+    margin-bottom:6px;
+  }
+  .danger-card .stress{ color:var(--wine); font-weight:600; }
+  .danger-card .btn-row{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+  }
+  .danger-card button{
+    flex:1;
+    padding:11px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    border:1px solid var(--line);
+  }
+  .danger-card .cancel-btn{ background:var(--surface-2); color:var(--text); }
+  .danger-card .confirm-btn{ background:var(--wine); color:#fff; border-color:var(--wine); }
+  .danger-card .confirm-btn:hover{ background:#9c3a33; }
+</style>
+</head>
+<body>
+
+<div id="authOverlay">
+  <div class="auth-card" id="authCard"><!-- filled by JS --></div>
+</div>
+
+<div id="toast"><span class="tick">✓</span><span id="toastMsg"></span></div>
+
+<div id="dangerModal" class="danger-modal hidden">
+  <div class="danger-card">
+    <div class="warn-ico">⚠️</div>
+    <h3>Reset ExpenseIQ on this device?</h3>
+    <p>This will permanently delete your <b>name, PIN, and every expense</b> logged on this device.</p>
+    <p class="stress">This cannot be undone unless you've exported a backup.</p>
+    <div class="btn-row">
+      <button class="cancel-btn" id="dangerCancelBtn">Cancel</button>
+      <button class="confirm-btn" id="dangerConfirmBtn">Yes, delete everything</button>
+    </div>
+  </div>
+</div>
+
+<div id="appRoot" class="locked">
+<div class="wrap">
+
+  <header>
+    <div class="header-greeting" id="headerGreeting" style="display:none;">
+      <span id="greetName"></span>
+      <button id="lockBtn" title="Lock app" aria-label="Lock app">🔒</button>
+    </div>
+    <div class="brand">
+      <div class="mark">Expense<em>IQ</em></div>
+      <div class="sub">Smart personal expense tracker</div>
+    </div>
+    <div class="header-controls">
+      <select id="currencySelect" aria-label="Currency"></select>
+      <div class="month-nav">
+        <button id="prevRange" aria-label="Previous">‹</button>
+        <span id="rangeLabel">—</span>
+        <button id="nextRange" aria-label="Next">›</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="view-tabs" role="tablist" aria-label="Time range">
+    <button class="tab" data-mode="day" role="tab">Daily</button>
+    <button class="tab" data-mode="week" role="tab">Weekly</button>
+    <button class="tab active" data-mode="month" role="tab">Monthly</button>
+    <button class="tab" data-mode="year" role="tab">Yearly</button>
+  </div>
+
+  <div class="total-card">
+    <div>
+      <div class="total-label" id="totalLabel">Total spent this month</div>
+      <div class="total-amount" id="totalAmount"><span class="rs">Rs</span><span class="digit">0</span></div>
+    </div>
+    <div class="total-meta">
+      <span class="count" id="entryCount">0</span> entries logged
+    </div>
+  </div>
+
+  <div id="insightBanner" class="insight-banner" style="display:none;"></div>
+
+  <div class="add-card">
+    <h2>Add an expense</h2>
+    <form id="expenseForm">
+      <div class="field">
+        <label for="amount" id="amountLabel">Amount (Rs)</label>
+        <input type="number" id="amount" inputmode="decimal" min="0" step="1" placeholder="0" required>
+      </div>
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category">
+          <option value="Food">🍽 Food</option>
+          <option value="Transport">🚕 Transport</option>
+          <option value="Bills">💡 Bills</option>
+          <option value="Shopping">🛍 Shopping</option>
+          <option value="Health">💊 Health</option>
+          <option value="Education">📚 Education</option>
+          <option value="Entertainment">🎬 Entertainment</option>
+          <option value="Other">🗂 Other</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label for="note">Note (optional)</label>
+        <input type="text" id="note" placeholder="e.g. lunch with friends" maxlength="60">
+      </div>
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="date" id="date" required>
+      </div>
+      <button type="submit" class="add-btn">+ Add</button>
+    </form>
+  </div>
+
+  <div class="breakdown" id="breakdownCard">
+    <h2>By category</h2>
+    <div id="breakdownBody"><div class="empty-note">No expenses yet this month.</div></div>
+  </div>
+
+  <div class="ledger">
+    <h2 id="ledgerHeading">This month's entries</h2>
+    <div id="ledgerBody"></div>
+  </div>
+
+  <footer>
+    <span>Stored only on this device — no internet needed.</span>
+    <div class="actions">
+      <button id="exportBtn">Export backup</button>
+      <button id="importBtn">Import backup</button>
+      <input type="file" id="importFile" accept="application/json">
+    </div>
+  </footer>
+
+</div>
+</div><!-- /#appRoot -->
+
+<script>
+(function(){
+  "use strict";
+
+  const STORAGE_KEY = "expenseiq_expenses_v1";
+  const CURRENCY_KEY = "expenseiq_currency_v1";
+  const CAT_ICONS = {
+    Food:"🍽", Transport:"🚕", Bills:"💡", Shopping:"🛍",
+    Health:"💊", Education:"📚", Entertainment:"🎬", Other:"🗂"
+  };
+  const CURRENCIES = [
+    { code:"PKR", symbol:"Rs",  label:"PKR — Pakistani Rupee" },
+    { code:"USD", symbol:"$",   label:"USD — US Dollar" },
+    { code:"GBP", symbol:"£",   label:"GBP — British Pound" },
+    { code:"EUR", symbol:"€",   label:"EUR — Euro" },
+    { code:"SAR", symbol:"ر.س", label:"SAR — Saudi Riyal" },
+    { code:"AED", symbol:"د.إ", label:"AED — UAE Dirham" },
+    { code:"INR", symbol:"₹",   label:"INR — Indian Rupee" }
+  ];
+
+  let expenses = [];
+  let storageOk = true;
+  let currency = CURRENCIES[0];
+  let viewMode = "month"; // 'day' | 'week' | 'month'
+  let viewDate = new Date();
+  viewDate.setHours(0,0,0,0);
+
+  const $ = (id) => document.getElementById(id);
+  const form = $("expenseForm");
+  const dateInput = $("date");
+  const rangeLabel = $("rangeLabel");
+  const totalAmount = $("totalAmount");
+  const totalLabel = $("totalLabel");
+  const entryCount = $("entryCount");
+  const breakdownBody = $("breakdownBody");
+  const ledgerBody = $("ledgerBody");
+  const ledgerHeading = $("ledgerHeading");
+  const amountLabel = $("amountLabel");
+  const currencySelect = $("currencySelect");
+  const insightBanner = $("insightBanner");
+
+  /* ══════════════════════════════════════════════════
+     AUTH — local profile + PIN lock + optional biometric
+     No server involved: everything stays on this device.
+  ══════════════════════════════════════════════════ */
+  const PROFILE_KEY = "expenseiq_profile_v1";
+  const authOverlay = $("authOverlay");
+  const authCard = $("authCard");
+  const appRoot = $("appRoot");
+  const headerGreeting = $("headerGreeting");
+  const greetName = $("greetName");
+
+  let profile = loadProfile();
+
+  function loadProfile(){
+    try{
+      const raw = localStorage.getItem(PROFILE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+  function saveProfile(){
+    try{ localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
+    catch(e){ console.error("Could not save profile:", e); }
+  }
+
+  function bufToBase64(buf){
+    return btoa(String.fromCharCode(...new Uint8Array(buf)));
+  }
+  function base64ToBuf(b64){
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    return arr.buffer;
+  }
+
+  async function hashPin(pin, saltB64){
+    const enc = new TextEncoder();
+    const data = enc.encode(saltB64 + ":" + pin);
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return bufToBase64(digest);
+  }
+
+  function biometricAvailable(){
+    return !!(window.PublicKeyCredential && navigator.credentials);
+  }
+
+  async function registerBiometric(){
+    try{
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      const userId = crypto.getRandomValues(new Uint8Array(16));
+      const cred = await navigator.credentials.create({
+        publicKey:{
+          challenge,
+          rp:{ name:"ExpenseIQ" },
+          user:{ id:userId, name:profile.name || "user", displayName:profile.name || "user" },
+          pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+          authenticatorSelection:{ authenticatorAttachment:"platform", userVerification:"required" },
+          timeout:60000
+        }
+      });
+      profile.credentialId = bufToBase64(cred.rawId);
+      profile.biometricEnabled = true;
+      saveProfile();
+      return true;
+    }catch(e){
+      console.error("Biometric setup failed/cancelled:", e);
+      return false;
+    }
+  }
+
+  async function verifyBiometric(){
+    if(!profile || !profile.biometricEnabled || !profile.credentialId) return false;
+    try{
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      const assertion = await navigator.credentials.get({
+        publicKey:{
+          challenge,
+          allowCredentials:[{ id:base64ToBuf(profile.credentialId), type:"public-key" }],
+          userVerification:"required",
+          timeout:60000
+        }
+      });
+      return !!assertion;
+    }catch(e){
+      console.error("Biometric unlock failed/cancelled:", e);
+      return false;
+    }
+  }
+
+  function showToast(msg, duration){
+    const toast = $("toast");
+    $("toastMsg").textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove("show"), duration || 2200);
+  }
+
+  function unlockApp(isNewProfile){
+    authOverlay.classList.add("hidden");
+    appRoot.classList.remove("locked");
+    headerGreeting.style.display = "flex";
+    greetName.textContent = profile.name;
+    init();
+    showToast(isNewProfile
+      ? `Profile created — welcome, ${profile.name}!`
+      : `Logged in successfully — welcome back, ${profile.name}!`);
+  }
+
+  function initAuth(){
+    if(!profile){
+      renderOnboarding();
+    }else{
+      renderLock();
+    }
+  }
+
+  function renderOnboarding(step){
+    step = step || "profile";
+    if(step === "profile"){
+      authCard.innerHTML = `
+        <div class="auth-mark">Expense<em>IQ</em></div>
+        <div class="auth-sub">Set up your profile</div>
+        <form id="setupForm">
+          <div class="auth-field">
+            <label for="setupName">Your name</label>
+            <input type="text" id="setupName" placeholder="e.g. Rafay" maxlength="30" required autocomplete="name">
+          </div>
+          <div class="auth-field">
+            <label for="setupPin">Create a PIN (4–6 digits)</label>
+            <input type="password" id="setupPin" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autocomplete="new-password">
+          </div>
+          <div class="auth-field">
+            <label for="setupPinConfirm">Confirm PIN</label>
+            <input type="password" id="setupPinConfirm" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autocomplete="new-password">
+          </div>
+          <div class="auth-error" id="setupError"></div>
+          <button type="submit" class="auth-btn">Create profile</button>
+        </form>
+      `;
+      $("setupForm").addEventListener("submit", async function(ev){
+        ev.preventDefault();
+        const name = $("setupName").value.trim();
+        const pin = $("setupPin").value.trim();
+        const pin2 = $("setupPinConfirm").value.trim();
+        const err = $("setupError");
+        if(!/^\d{4,6}$/.test(pin)){ err.textContent = "PIN must be 4–6 digits."; return; }
+        if(pin !== pin2){ err.textContent = "PINs don't match."; return; }
+        const salt = bufToBase64(crypto.getRandomValues(new Uint8Array(16)));
+        const hash = await hashPin(pin, salt);
+        profile = { name, salt, hash, biometricEnabled:false, credentialId:null };
+        saveProfile();
+        if(biometricAvailable()){
+          renderOnboarding("biometric");
+        }else{
+          unlockApp(true);
+        }
+      });
+    } else if(step === "biometric"){
+      authCard.innerHTML = `
+        <div class="biometric-icon">🔐</div>
+        <div class="auth-greeting">Enable fingerprint / Face unlock for faster access next time?</div>
+        <button class="auth-btn" id="enableBioBtn">Enable</button>
+        <button class="auth-btn secondary" id="skipBioBtn">Skip for now</button>
+      `;
+      $("enableBioBtn").addEventListener("click", async function(){
+        const ok = await registerBiometric();
+        if(!ok) alert("Couldn't set up biometric unlock on this device/browser. You can still use your PIN, or try this after hosting the app over HTTPS.");
+        unlockApp(true);
+      });
+      $("skipBioBtn").addEventListener("click", () => unlockApp(true));
+    }
+  }
+
+  function renderLock(){
+    authCard.innerHTML = `
+      <div class="auth-mark">Expense<em>IQ</em></div>
+      <div class="auth-greeting">Welcome back, <b>${escapeHtmlOuter(profile.name)}</b></div>
+      <form id="lockForm">
+        <div class="auth-field">
+          <label for="lockPin">Enter PIN</label>
+          <input type="password" id="lockPin" class="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autofocus required autocomplete="current-password">
+        </div>
+        <div class="auth-error" id="lockError"></div>
+        <button type="submit" class="auth-btn">Unlock</button>
+      </form>
+      ${profile.biometricEnabled ? `<button class="auth-btn secondary" id="bioUnlockBtn">👆 Use fingerprint / Face ID</button>` : ""}
+      <button class="auth-btn ghost" id="forgotBtn">Forgot PIN?</button>
+    `;
+    $("lockForm").addEventListener("submit", async function(ev){
+      ev.preventDefault();
+      const pin = $("lockPin").value.trim();
+      const err = $("lockError");
+      const attemptHash = await hashPin(pin, profile.salt);
+      if(attemptHash === profile.hash){
+        unlockApp();
+      }else{
+        err.textContent = "Incorrect PIN. Try again.";
+        $("lockPin").value = "";
+        $("lockPin").focus();
+      }
+    });
+    if(profile.biometricEnabled){
+      $("bioUnlockBtn").addEventListener("click", async function(){
+        const ok = await verifyBiometric();
+        if(ok) unlockApp();
+        else alert("Biometric unlock didn't succeed. Please use your PIN.");
+      });
+    }
+    $("forgotBtn").addEventListener("click", showDangerModal);
+  }
+
+  function showDangerModal(){
+    $("dangerModal").classList.remove("hidden");
+  }
+  function hideDangerModal(){
+    $("dangerModal").classList.add("hidden");
+  }
+  function wireDangerModal(){
+    $("dangerCancelBtn").addEventListener("click", hideDangerModal);
+    $("dangerConfirmBtn").addEventListener("click", function(){
+      localStorage.removeItem(PROFILE_KEY);
+      localStorage.removeItem(STORAGE_KEY);
+      profile = null;
+      expenses = [];
+      hideDangerModal();
+      renderOnboarding();
+    });
+  }
+  wireDangerModal();
+
+  function escapeHtmlOuter(str){
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  initAuth();
+
+  let appInitialized = false;
+
+  function init(){
+    if(appInitialized){ render(); return; } // just re-entering after unlock
+    appInitialized = true;
+
+    expenses = loadExpenses();
+    currency = loadCurrency();
+    populateCurrencySelect();
+    dateInput.value = new Date().toISOString().slice(0,10);
+
+    form.addEventListener("submit", onSubmit);
+    ledgerBody.addEventListener("click", onLedgerClick);
+    $("prevRange").addEventListener("click", () => shiftRange(-1));
+    $("nextRange").addEventListener("click", () => shiftRange(1));
+    document.querySelectorAll(".view-tabs .tab").forEach(tab => {
+      tab.addEventListener("click", () => setViewMode(tab.dataset.mode));
+    });
+    currencySelect.addEventListener("change", onCurrencyChange);
+    $("exportBtn").addEventListener("click", onExport);
+    $("importBtn").addEventListener("click", () => $("importFile").click());
+    $("importFile").addEventListener("change", onImport);
+    $("lockBtn").addEventListener("click", relockApp);
+
+    if(!storageOk){
+      const warn = document.createElement("div");
+      warn.style.cssText = "background:#3a2420;border:1px solid var(--wine);color:#f1c4bd;padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:16px;";
+      warn.textContent = "Note: this browser is blocking local storage, so entries will only stay until you close this page. Try opening the downloaded file directly in Chrome or Firefox instead of a preview window.";
+      document.querySelector(".wrap").insertBefore(warn, document.querySelector("header").nextSibling);
+    }
+
+    render();
+  }
+
+  function relockApp(){
+    appRoot.classList.add("locked");
+    authOverlay.classList.remove("hidden");
+    renderLock();
+  }
+
+  function loadExpenses(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){
+      console.error("Could not read saved data:", e);
+      storageOk = false;
+      return [];
+    }
+  }
+
+  function saveExpenses(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+    }catch(e){
+      console.error("Could not save data:", e);
+      storageOk = false;
+    }
+  }
+
+  function loadCurrency(){
+    try{
+      const code = localStorage.getItem(CURRENCY_KEY);
+      return CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
+    }catch(e){
+      return CURRENCIES[0];
+    }
+  }
+
+  function saveCurrency(){
+    try{ localStorage.setItem(CURRENCY_KEY, currency.code); }catch(e){ /* ignore */ }
+  }
+
+  function populateCurrencySelect(){
+    currencySelect.innerHTML = CURRENCIES.map(c =>
+      `<option value="${c.code}" ${c.code === currency.code ? "selected" : ""}>${c.label}</option>`
+    ).join("");
+  }
+
+  function onCurrencyChange(){
+    currency = CURRENCIES.find(c => c.code === currencySelect.value) || CURRENCIES[0];
+    saveCurrency();
+    render();
+  }
+
+  function setViewMode(mode){
+    viewMode = mode;
+    document.querySelectorAll(".view-tabs .tab").forEach(t => {
+      t.classList.toggle("active", t.dataset.mode === mode);
+    });
+    render();
+  }
+
+  function shiftRange(dir){
+    if(viewMode === "day") viewDate.setDate(viewDate.getDate() + dir);
+    else if(viewMode === "week") viewDate.setDate(viewDate.getDate() + dir*7);
+    else if(viewMode === "year") viewDate.setFullYear(viewDate.getFullYear() + dir);
+    else viewDate.setMonth(viewDate.getMonth() + dir);
+    render();
+  }
+
+  function toISODate(d){
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+
+  function getRange(baseDate){
+    const d = new Date(baseDate || viewDate);
+    if(viewMode === "day"){
+      return { start: toISODate(d), end: toISODate(d) };
+    }
+    if(viewMode === "week"){
+      const day = (d.getDay() + 6) % 7; // Monday = 0
+      const monday = new Date(d); monday.setDate(d.getDate() - day);
+      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+      return { start: toISODate(monday), end: toISODate(sunday) };
+    }
+    if(viewMode === "year"){
+      const first = new Date(d.getFullYear(), 0, 1);
+      const last = new Date(d.getFullYear(), 11, 31);
+      return { start: toISODate(first), end: toISODate(last) };
+    }
+    // month
+    const first = new Date(d.getFullYear(), d.getMonth(), 1);
+    const last = new Date(d.getFullYear(), d.getMonth()+1, 0);
+    return { start: toISODate(first), end: toISODate(last) };
+  }
+
+  function getPreviousRange(){
+    const d = new Date(viewDate);
+    if(viewMode === "day") d.setDate(d.getDate() - 1);
+    else if(viewMode === "week") d.setDate(d.getDate() - 7);
+    else if(viewMode === "year") d.setFullYear(d.getFullYear() - 1);
+    else d.setMonth(d.getMonth() - 1);
+    return getRange(d);
+  }
+
+  function fmtMoney(n){
+    return Math.round(n).toLocaleString("en-US");
+  }
+
+  function fmtRangeLabel(){
+    const { start, end } = getRange();
+    if(viewMode === "day"){
+      return new Date(start + "T00:00:00").toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short", year:"numeric" });
+    }
+    if(viewMode === "week"){
+      const s = new Date(start + "T00:00:00"), e = new Date(end + "T00:00:00");
+      const sameMonth = s.getMonth() === e.getMonth();
+      const sStr = s.toLocaleDateString("en-GB", { day:"numeric", month: sameMonth ? undefined : "short" });
+      const eStr = e.toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
+      return `${sStr} – ${eStr}`;
+    }
+    if(viewMode === "year"){
+      return String(viewDate.getFullYear());
+    }
+    return viewDate.toLocaleDateString("en-GB", { month:"long", year:"numeric" });
+  }
+
+  function entriesInRange(range){
+    return expenses.filter(e => e.date >= range.start && e.date <= range.end);
+  }
+
+  function entriesForRange(){
+    return entriesInRange(getRange()).sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
+  }
+
+  function onSubmit(ev){
+    ev.preventDefault();
+    const amount = parseFloat($("amount").value);
+    if(!amount || amount <= 0){
+      $("amount").focus();
+      return;
+    }
+    const entry = {
+      id: Date.now(),
+      amount: amount,
+      currency: currency.code,
+      category: $("category").value,
+      note: $("note").value.trim(),
+      date: dateInput.value || new Date().toISOString().slice(0,10)
+    };
+    expenses.push(entry);
+    saveExpenses();
+
+    // jump view to wherever the new entry lands
+    const [y,m,dd] = entry.date.split("-").map(Number);
+    viewDate = new Date(y, m-1, dd);
+
+    form.reset();
+    dateInput.value = new Date().toISOString().slice(0,10);
+    $("amount").focus();
+    render();
+  }
+
+  function onLedgerClick(ev){
+    const btn = ev.target.closest(".del");
+    if(!btn) return;
+    const id = Number(btn.dataset.id);
+    expenses = expenses.filter(e => e.id !== id);
+    saveExpenses();
+    render();
+  }
+
+  function onExport(){
+    const blob = new Blob([JSON.stringify(expenses, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "expenseiq-backup-" + new Date().toISOString().slice(0,10) + ".json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function onImport(ev){
+    const file = ev.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(){
+      try{
+        const data = JSON.parse(reader.result);
+        if(!Array.isArray(data)) throw new Error("bad format");
+        expenses = data;
+        saveExpenses();
+        render();
+        alert("Backup restored — " + data.length + " entries loaded.");
+      }catch(e){
+        alert("Could not read that file. Please choose a valid ExpenseIQ backup (.json).");
+      }
+    };
+    reader.readAsText(file);
+    ev.target.value = "";
+  }
+
+  function computeInsight(rangeEntries){
+    const prevRange = getPreviousRange();
+    const prevEntries = entriesInRange(prevRange);
+    const currentTotal = rangeEntries.reduce((s,e)=>s+e.amount,0);
+    const prevTotal = prevEntries.reduce((s,e)=>s+e.amount,0);
+
+    const periodWord = { day:"yesterday", week:"last week", month:"last month", year:"last year" }[viewMode];
+
+    if(prevTotal === 0 && currentTotal === 0) return null;
+
+    // overall change
+    let overallPct = null;
+    if(prevTotal > 0){
+      overallPct = Math.round(((currentTotal - prevTotal) / prevTotal) * 100);
+    }
+
+    // biggest category mover
+    const curByCat = {}, prevByCat = {};
+    rangeEntries.forEach(e => { curByCat[e.category] = (curByCat[e.category]||0) + e.amount; });
+    prevEntries.forEach(e => { prevByCat[e.category] = (prevByCat[e.category]||0) + e.amount; });
+
+    let topMover = null, topPct = 0, topIsNew = false;
+    Object.keys(curByCat).forEach(cat => {
+      const cur = curByCat[cat], prev = prevByCat[cat] || 0;
+      if(prev === 0 && cur > 0){
+        if(cur > (topMover ? curByCat[topMover] : 0)){ topMover = cat; topIsNew = true; topPct = 100; }
+        return;
+      }
+      if(prev > 0){
+        const pct = Math.round(((cur - prev) / prev) * 100);
+        if(Math.abs(pct) > Math.abs(topPct) || topMover === null){
+          topMover = cat; topPct = pct; topIsNew = false;
+        }
+      }
+    });
+
+    const parts = [];
+    if(overallPct !== null && Math.abs(overallPct) >= 5){
+      const dir = overallPct > 0 ? "up" : "down";
+      const cls = overallPct > 0 ? "up" : "down";
+      parts.push(`Total spending is <span class="${cls}"><b>${Math.abs(overallPct)}% ${dir}</b></span> from ${periodWord}.`);
+    }
+    if(topMover && (Math.abs(topPct) >= 20 || topIsNew)){
+      if(topIsNew){
+        parts.push(`New this ${viewMode}: <b>${CAT_ICONS[topMover]||""} ${topMover}</b> (Rs ${fmtMoney(curByCat[topMover])}), no spending here ${periodWord}.`);
+      }else{
+        const dir = topPct > 0 ? "up" : "down";
+        const cls = topPct > 0 ? "up" : "down";
+        parts.push(`<b>${CAT_ICONS[topMover]||""} ${topMover}</b> is <span class="${cls}">${Math.abs(topPct)}% ${dir}</span> compared to ${periodWord}.`);
+      }
+    }
+
+    if(parts.length === 0){
+      if(prevTotal > 0 && currentTotal > 0){
+        return { text: `Spending is about the same as ${periodWord}.`, warn:false };
+      }
+      return null;
+    }
+    return { text: parts.join(" "), warn: overallPct !== null && overallPct >= 30 };
+  }
+
+  function render(){
+    rangeLabel.textContent = fmtRangeLabel();
+    amountLabel.textContent = `Amount (${currency.symbol})`;
+    const rangeWord = { day:"day", week:"week", month:"month", year:"year" }[viewMode];
+    totalLabel.textContent = viewMode === "day" ? "Total spent today" : `Total spent this ${rangeWord}`;
+    ledgerHeading.textContent = viewMode === "day" ? "Today's entries" : `This ${rangeWord}'s entries`;
+
+    const rangeEntries = entriesForRange();
+
+    // total
+    const total = rangeEntries.reduce((s,e) => s + e.amount, 0);
+    totalAmount.innerHTML = `<span class="rs">${currency.symbol}</span><span class="digit">${fmtMoney(total)}</span>`;
+    entryCount.textContent = rangeEntries.length;
+
+    // insight banner
+    const insight = computeInsight(rangeEntries);
+    if(insight){
+      insightBanner.style.display = "flex";
+      insightBanner.className = "insight-banner" + (insight.warn ? " warn" : "");
+      insightBanner.innerHTML = `<div class="ico">${insight.warn ? "⚠️" : "💡"}</div><div class="txt">${insight.text}</div>`;
+    }else{
+      insightBanner.style.display = "none";
+    }
+
+    // breakdown by category
+    if(rangeEntries.length === 0){
+      breakdownBody.innerHTML = `<div class="empty-note">No expenses ${viewMode === "day" ? "yet today" : `yet this ${rangeWord}`}.</div>`;
+    }else{
+      const totals = {};
+      rangeEntries.forEach(e => { totals[e.category] = (totals[e.category]||0) + e.amount; });
+      const max = Math.max(...Object.values(totals));
+      const rows = Object.entries(totals)
+        .sort((a,b) => b[1]-a[1])
+        .map(([cat, amt]) => `
+          <div class="cat-row">
+            <div class="cat-name">${CAT_ICONS[cat]||"🗂"} ${cat}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${max ? (amt/max*100) : 0}%"></div></div>
+            <div class="cat-amt">${currency.symbol} ${fmtMoney(amt)}</div>
+          </div>
+        `).join("");
+      breakdownBody.innerHTML = rows;
+    }
+
+    // ledger list
+    if(rangeEntries.length === 0){
+      ledgerBody.innerHTML = `
+        <div class="empty-state">
+          <div class="glyph">🧾</div>
+          <p>Nothing logged yet — add your first expense above.</p>
+        </div>`;
+      return;
+    }
+
+    const groups = {};
+    const groupKeyFn = viewMode === "year" ? (d => d.slice(0,7)) : (d => d);
+    rangeEntries.forEach(e => {
+      const k = groupKeyFn(e.date);
+      (groups[k] = groups[k] || []).push(e);
+    });
+
+    const dayLabelFmt = (dstr) => new Date(dstr + "T00:00:00")
+      .toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short" });
+    const monthLabelFmt = (mstr) => new Date(mstr + "-01T00:00:00")
+      .toLocaleDateString("en-GB", { month:"long", year:"numeric" });
+
+    ledgerBody.innerHTML = Object.keys(groups).sort().reverse().map(key => {
+      const items = groups[key].map(e => `
+        <div class="entry" data-id="${e.id}">
+          <div class="icon">${CAT_ICONS[e.category]||"🗂"}</div>
+          <div class="info">
+            <div class="cat">${e.category}</div>
+            ${e.note ? `<div class="note">${escapeHtml(e.note)}</div>` : ""}
+          </div>
+          <div class="amt">${e.currency && e.currency !== currency.code ? e.currency : currency.symbol} ${fmtMoney(e.amount)}</div>
+          <button class="del" aria-label="Delete entry" data-id="${e.id}">✕</button>
+        </div>
+      `).join("");
+      if(viewMode === "day"){
+        return `<div class="day-group">${items}</div>`;
+      }
+      const heading = viewMode === "year" ? monthLabelFmt(key) : dayLabelFmt(key);
+      return `<div class="day-group"><div class="day-heading">${heading}</div>${items}</div>`;
+    }).join("");
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+})();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch((e) => {
+      console.log("Service worker not registered (fine if opened as a local file):", e);
+    });
+  });
+}
+</script>
+</body>
+</html>
